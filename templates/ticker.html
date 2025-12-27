@@ -12,6 +12,11 @@
   {% if error %}
     <p>{{error}}</p>
   {% else %}
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+      {% for value, label in chart.range_options %}
+        <a href="?range={{value}}" style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; text-decoration:none; background: {{ 'black' if chart.range == value else '#f7f7f7' }}; color: {{ 'white' if chart.range == value else '#333' }};">{{label}}</a>
+      {% endfor %}
+    </div>
     <p>Current price (last close): <b>{{ '%.2f'|format(chart.current) }}</b></p>
     <canvas id="c" width="1100" height="420"></canvas>
 
@@ -19,10 +24,11 @@
       const labels = {{ chart.labels|tojson }};
       const prices = {{ chart.prices|tojson }};
       const buys = {{ chart.buys|tojson }};
+      const activeRange = '{{ chart.range }}';
 
       const ctx = document.getElementById('c');
 
-      new Chart(ctx, {
+      const chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
@@ -43,12 +49,22 @@
         },
         options: {
           responsive: true,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          hover: {
+            mode: 'index',
+            intersect: false
+          },
           plugins: {
             tooltip: {
               callbacks: {
                 label: (context) => {
                   if (context.dataset.label === 'Buys') {
-                    return context.raw.label;
+                    const buyLabel = context.raw.label || context.raw.y;
+                    const dateLabel = context.raw.dateLabel || labels[context.dataIndex];
+                    return `${buyLabel} (${dateLabel})`;
                   }
                   return `${context.dataset.label}: ${context.formattedValue}`;
                 }
@@ -58,6 +74,30 @@
           scales: {
             x: { ticks: { maxTicksLimit: 12 } }
           }
+        }
+      });
+
+      // Add gradient fill for nicer hover visibility similar to Google chart shading
+      const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, ctx.height);
+      gradient.addColorStop(0, 'rgba(33,150,243,0.25)');
+      gradient.addColorStop(1, 'rgba(33,150,243,0)');
+      chart.data.datasets[0].backgroundColor = gradient;
+      chart.update();
+
+      // Highlight selected range link
+      document.querySelectorAll('a[href^="?range="]').forEach((link) => {
+        if (link.getAttribute('href') === `?range=${activeRange}`) {
+          link.setAttribute('aria-current', 'true');
+        }
+      });
+
+      // Keep the tooltip visible when moving within chart area
+      ctx.addEventListener('mousemove', (event) => {
+        const points = chart.getElementsAtEventForMode(event, 'index', { intersect: false }, true);
+        if (points.length) {
+          chart.setActiveElements(points);
+          chart.tooltip.setActiveElements(points, {x: event.offsetX, y: event.offsetY});
+          chart.update();
         }
       });
     </script>

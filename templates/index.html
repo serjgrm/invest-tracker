@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Invest Tracker</title>
+</head>
+<body>
+  <h2>Add trade</h2>
+  <form method="post" action="/trade">
+    <input name="ticker" placeholder="NVDA" required />
+    <input name="buy_date" type="date" required />
+    <input name="buy_price" type="number" step="0.01" placeholder="Buy price" required />
+    <input name="qty" type="number" step="0.0001" value="1" />
+    <button type="submit">Save</button>
+  </form>
+
+  <h2>Your tickers</h2>
+  <ul>
+    {% for t in tickers %}
+      <li><a href="/ticker/{{t['ticker']}}">{{t['ticker']}}</a> (trades: {{t['n']}}, qty: {{ '%.4f'|format(t['total_qty'] or 0) }})</li>
+    {% else %}
+      <li>No trades yet.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>{{ticker}}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <p><a href="/">← back</a></p>
+  <h2>{{ticker}}</h2>
+
+  {% if error %}
+    <p>{{error}}</p>
+  {% else %}
+    <p>Current price (last close): <b>{{ '%.2f'|format(chart.current) }}</b></p>
+    <canvas id="c" width="1100" height="420"></canvas>
+
+    <script>
+      const labels = {{ chart.labels|tojson }};
+      const prices = {{ chart.prices|tojson }};
+      const buys = {{ chart.buys|tojson }};
+
+      const ctx = document.getElementById('c');
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '{{ticker}} Close',
+              data: prices,
+              tension: 0.15,
+              pointRadius: 0
+            },
+            {
+              type: 'scatter',
+              label: 'Buys',
+              data: buys,
+              pointRadius: 5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  if (context.dataset.label === 'Buys') {
+                    return context.raw.label;
+                  }
+                  return `${context.dataset.label}: ${context.formattedValue}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { maxTicksLimit: 12 } }
+          }
+        }
+      });
+    </script>
+  {% endif %}
+
+  <h3>Trades</h3>
+  <ul>
+    {% for tr in trades %}
+      <li>
+        {{tr['buy_date']}} — {{tr['buy_price']}} x {{tr['qty']}}
+        <form method="post" action="/delete/{{tr['id']}}" style="display:inline;">
+          <button type="submit">delete</button>
+        </form>
+      </li>
+    {% else %}
+      <li>No trades.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

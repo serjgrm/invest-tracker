@@ -6,6 +6,25 @@ import pandas as pd
 app = Flask(__name__)
 init_db()
 
+TICKER_ALIASES = {
+    "VU": "VOO",
+}
+
+
+def canonicalize_ticker(raw: str) -> str:
+    ticker = (raw or "").upper().strip()
+    return TICKER_ALIASES.get(ticker, ticker)
+
+
+def migrate_ticker_aliases():
+    with get_conn() as conn:
+        for old, new in TICKER_ALIASES.items():
+            conn.execute("UPDATE trades SET ticker=? WHERE ticker=?", (new, old))
+        conn.commit()
+
+
+migrate_ticker_aliases()
+
 @app.get("/")
 def index():
     with get_conn() as conn:
@@ -19,7 +38,7 @@ def index():
 
 @app.post("/trade")
 def add_trade():
-    ticker = (request.form.get("ticker") or "").upper().strip()
+    ticker = canonicalize_ticker(request.form.get("ticker"))
     buy_date = (request.form.get("buy_date") or "").strip()
     buy_price = float(request.form.get("buy_price") or 0)
     qty = float(request.form.get("qty") or 1)
@@ -37,7 +56,9 @@ def add_trade():
 
 @app.get("/ticker/<ticker>")
 def ticker_page(ticker):
-    ticker = ticker.upper().strip()
+    ticker = canonicalize_ticker(ticker)
+    if ticker != request.view_args["ticker"]:
+        return redirect(url_for("ticker_page", ticker=ticker))
 
     with get_conn() as conn:
         trades = conn.execute(
@@ -100,7 +121,7 @@ def update_trade(trade_id):
     if not row:
         return redirect(url_for("index"))
 
-    ticker = (request.form.get("ticker") or "").upper().strip()
+    ticker = canonicalize_ticker(request.form.get("ticker"))
     buy_date = (request.form.get("buy_date") or "").strip()
     buy_price = float(request.form.get("buy_price") or 0)
     qty = float(request.form.get("qty") or 0)

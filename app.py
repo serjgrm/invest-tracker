@@ -93,5 +93,29 @@ def delete_trade(trade_id):
             return redirect(url_for("ticker_page", ticker=ticker))
     return redirect(url_for("index"))
 
+@app.post("/trade/<int:trade_id>/update")
+def update_trade(trade_id):
+    with get_conn() as conn:
+        row = conn.execute("SELECT ticker FROM trades WHERE id=?", (trade_id,)).fetchone()
+    if not row:
+        return redirect(url_for("index"))
+
+    ticker = (request.form.get("ticker") or "").upper().strip()
+    buy_date = (request.form.get("buy_date") or "").strip()
+    buy_price = float(request.form.get("buy_price") or 0)
+    qty = float(request.form.get("qty") or 0)
+
+    if not ticker or not buy_date or buy_price <= 0 or qty <= 0:
+        return redirect(url_for("ticker_page", ticker=row["ticker"]))
+
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE trades SET ticker=?, buy_date=?, buy_price=?, qty=? WHERE id=?",
+            (ticker, buy_date, buy_price, qty, trade_id),
+        )
+        conn.commit()
+
+    return redirect(url_for("ticker_page", ticker=ticker))
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

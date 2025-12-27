@@ -17,7 +17,11 @@
   <h2>Your tickers</h2>
   <ul>
     {% for t in tickers %}
-      <li><a href="/ticker/{{t['ticker']}}">{{t['ticker']}}</a> (trades: {{t['n']}}, qty: {{ '%.4f'|format(t['total_qty'] or 0) }})</li>
+      <li>
+        <a href="/ticker/{{t['ticker']}}">{{t['ticker']}}</a>
+        (trades: {{t['n']}}, qty: {{ '%.4f'|format(t['total_qty'] or 0) }})
+        <a href="/ticker/{{t['ticker']}}" style="margin-left:8px;">Change</a>
+      </li>
     {% else %}
       <li>No trades yet.</li>
     {% endfor %}

@@ -4,15 +4,30 @@
   <meta charset="utf-8" />
   <title>{{ticker}}</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    .periods { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+    .chip { padding: 6px 10px; border: 1px solid #ccc; border-radius: 20px; text-decoration: none; color: #333; }
+    .chip.active { background: #333; color: #fff; border-color: #333; }
+    table { border-collapse: collapse; margin-top: 12px; min-width: 480px; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+    th { background: #f0f0f0; }
+  </style>
 </head>
 <body>
-  <p><a href="/">← back</a></p>
+  <p><a href="/">← Назад</a></p>
   <h2>{{ticker}}</h2>
 
   {% if error %}
-    <p>{{error}}</p>
+    <p style="color:#b00020;">{{error}}</p>
   {% else %}
-    <p>Current price (last close): <b>{{ '%.2f'|format(chart.current) }}</b></p>
+    <div>Текущая цена (закрытие): <b>{{ '%.2f'|format(chart.current) }}</b></div>
+    <div class="periods">
+      {% for key, cfg in period_settings.items() %}
+        <a class="chip {% if period_key==key %}active{% endif %}" href="/ticker/{{ticker}}?period={{key}}">{{cfg.label}}</a>
+      {% endfor %}
+    </div>
+
     <canvas id="c" width="1100" height="420"></canvas>
 
     <script>
@@ -31,13 +46,18 @@
               label: '{{ticker}} Close',
               data: prices,
               tension: 0.15,
-              pointRadius: 0
+              pointRadius: 0,
+              borderColor: '#2f7ed8',
+              backgroundColor: 'rgba(47,126,216,0.05)',
+              fill: true,
             },
             {
               type: 'scatter',
-              label: 'Buys',
+              label: 'Покупки',
               data: buys,
-              pointRadius: 5
+              pointRadius: 6,
+              backgroundColor: '#d82f5f',
+              borderColor: '#d82f5f',
             }
           ]
         },
@@ -47,7 +67,7 @@
             tooltip: {
               callbacks: {
                 label: (context) => {
-                  if (context.dataset.label === 'Buys') {
+                  if (context.dataset.label === 'Покупки') {
                     return context.raw.label;
                   }
                   return `${context.dataset.label}: ${context.formattedValue}`;
@@ -63,26 +83,37 @@
     </script>
   {% endif %}
 
-  <h3>Trades</h3>
-  <ul>
-    {% for tr in trades %}
-      <li>
-        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-          <form method="post" action="/trade/{{tr['id']}}/update" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <input name="ticker" value="{{ticker}}" style="width:80px;" required />
-            <input name="buy_date" type="date" value="{{tr['buy_date']}}" required />
-            <input name="buy_price" type="number" step="0.01" value="{{tr['buy_price']}}" required />
-            <input name="qty" type="number" step="0.0001" value="{{tr['qty']}}" required />
-            <button type="submit">Save</button>
-          </form>
-          <form method="post" action="/delete/{{tr['id']}}" style="display:inline;">
-            <button type="submit">Delete</button>
-          </form>
-        </div>
-      </li>
-    {% else %}
-      <li>No trades.</li>
-    {% endfor %}
-  </ul>
+  <h3>Сделки</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Тикер</th>
+        <th>Дата</th>
+        <th>Цена</th>
+        <th>Кол-во</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for tr in trades %}
+        <tr>
+          <td><input form="update-{{tr['id']}}" name="ticker" value="{{ticker}}" style="width:80px;" required /></td>
+          <td><input form="update-{{tr['id']}}" name="buy_date" type="date" value="{{tr['buy_date']}}" required /></td>
+          <td><input form="update-{{tr['id']}}" name="buy_price" type="number" step="0.01" value="{{tr['buy_price']}}" required /></td>
+          <td><input form="update-{{tr['id']}}" name="qty" type="number" step="0.0001" value="{{tr['qty']}}" required /></td>
+          <td style="display:flex; gap:6px;">
+            <form id="update-{{tr['id']}}" method="post" action="/trade/{{tr['id']}}/update">
+              <button type="submit">Сохранить</button>
+            </form>
+            <form method="post" action="/delete/{{tr['id']}}" style="margin:0;">
+              <button type="submit">Удалить</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">Нет сделок.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </body>
 </html>
